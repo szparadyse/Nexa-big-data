@@ -1,0 +1,33 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+
+# Ignorer l'environnement virtuel (très important)
+venv/
+.venv/
+env/
+
+# Ignorer les fichiers compilés Python
+__pycache__/
+*.pyc
+
+# Ignorer les variables d'environnement (clés secrètes)
+.env
+
+# Ignorer les dossiers de l'IDE (optionnel mais recommandé)
+.idea/
+.vscode/
+.DS_Store
+
+#Ignorer le dossier data et logs 
+data/
+logs/
+
+# 1. Fichiers système Mac 
+.DS_Store
+**/.DS_Store
+
+# 2. Fichiers compilés Python 
+__pycache__/
+*.pyc
+
+# 3. Les logs d'Airflow 
+logs/
