@@ -5,110 +5,148 @@
 [![Spark](https://img.shields.io/badge/Spark-3.5-orange.svg)](https://spark.apache.org/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED.svg)](https://www.docker.com/)
 
-Ce projet implémente un pipeline de données complet (ETL) pour l'analyse des vélos en libre-service de Bordeaux (TBM). Il a été conçu dans un cadre éducatif pour démontrer la mise en place d'un cluster Hadoop distribué, l'orchestration de flux de données et le traitement analytique interactif.
+Ce projet implémente un **pipeline Big Data complet (ETL)** pour l’analyse des données de vélos en libre-service de Bordeaux (TBM).  
+Il a été conçu dans un cadre éducatif afin de démontrer :
 
-🏗️ Architecture du Projet
-L'infrastructure simule un environnement de production distribué grâce à la conteneurisation Docker :
+- la mise en place d’un **cluster Hadoop distribué**,
+- l’orchestration des flux de données,
+- le traitement analytique interactif avec Spark.
 
-Cluster Hadoop : Configuration multi-nœuds (1 Master + 2 Workers) assurant le stockage (HDFS) et la gestion des ressources (YARN).
+---
 
-Orchestration (Airflow) : Automatisation des scripts d'ingestion pour collecter les données API en temps réel.
+## 🏗️ Architecture du Projet
 
-Traitement (Spark Shell) : Analyse exploratoire et calculs distribués sur les données brutes stockées dans HDFS.
+L’infrastructure simule un environnement de production distribué grâce à la conteneurisation Docker.
 
-⚙️ Prérequis
-Docker Desktop (avec support Linux activé).
+- **Cluster Hadoop** :  
+  Configuration multi-nœuds (1 Master + 2 Workers) assurant le stockage via **HDFS** et la gestion des ressources avec **YARN**.
 
-Python 3.x & Apache Airflow.
+- **Orchestration (Apache Airflow)** :  
+  Automatisation de l’ingestion des données via un DAG récupérant les données depuis l’API TBM.
 
-Image Docker de base : liliasfaxi/hadoop-cluster:latest
+- **Traitement (Spark Shell)** :  
+  Analyse exploratoire et calculs distribués sur les données stockées dans HDFS.
 
-🚀 Installation et Déploiement
+---
 
-1. Initialisation du Réseau
-   Création d'un réseau pont (bridge) pour permettre la communication isolée entre les conteneurs du cluster.
+## ⚙️ Prérequis
 
-Bash
+- **Docker Desktop** (avec support Linux activé)
+- **Python 3.x**
+- **Apache Airflow**
+- Image Docker Hadoop :  
+  `liliasfaxi/hadoop-cluster:latest`
 
-docker network create --driver bridge hadoop 2. Démarrage des Conteneurs
-Le déploiement se fait en trois parties : le nœud maître (Master) et les deux nœuds esclaves (Workers).
+---
 
-Nœud Maître (NameNode & ResourceManager) :
+## 🚀 Installation et Déploiement
 
-Bash
+### 1. Création du réseau Docker
 
+Création d’un réseau bridge pour permettre la communication isolée entre les conteneurs Hadoop.
+
+```bash
+docker network create --driver bridge hadoop
+2. Démarrage des conteneurs Hadoop
+Le cluster est composé d’un nœud maître et de deux nœuds workers.
+
+Nœud maître (NameNode & ResourceManager)
+bash
+Copier le code
 docker run -itd \
- --net hadoop \
- -p 9870:9870 -p 8088:8088 -p 7077:7077 -p 16010:16010 \
- --name hadoop-master \
- --hostname hadoop-master \
- liliasfaxi/hadoop-cluster:latest
-Nœuds Esclaves (DataNodes) :
+  --net hadoop \
+  -p 9870:9870 \
+  -p 8088:8088 \
+  -p 7077:7077 \
+  -p 16010:16010 \
+  --name hadoop-master \
+  --hostname hadoop-master \
+  liliasfaxi/hadoop-cluster:latest
+Ces ports permettent l’accès aux interfaces Web Hadoop depuis la machine hôte.
 
-Bash
+Nœuds workers (DataNodes)
+bash
+Copier le code
+docker run -itd \
+  --net hadoop \
+  -p 8040:8042 \
+  --name hadoop-worker1 \
+  --hostname hadoop-worker1 \
+  liliasfaxi/hadoop-cluster:latest
+bash
+Copier le code
+docker run -itd \
+  --net hadoop \
+  -p 8041:8042 \
+  --name hadoop-worker2 \
+  --hostname hadoop-worker2 \
+  liliasfaxi/hadoop-cluster:latest
+3. Lancement des services Hadoop
+Connexion au conteneur maître :
 
-docker run -itd -p 8040:8042 --net hadoop --name hadoop-worker1 --hostname hadoop-worker1 liliasfaxi/hadoop-cluster:latest
-docker run -itd -p 8041:8042 --net hadoop --name hadoop-worker2 --hostname hadoop-worker2 liliasfaxi/hadoop-cluster:latest 3. Lancement des Services Hadoop
-Une fois les conteneurs instanciés, il faut démarrer les démons HDFS et YARN.
-
-Bash
-
-# Accès au shell du conteneur maître
-
+bash
+Copier le code
 docker exec -it hadoop-master bash
+Démarrage de HDFS et YARN :
 
-# Lancement du script d'initialisation à l'intérieur du conteneur
-
+bash
+Copier le code
 ./start-hadoop.sh
-📊 Interfaces de Monitoring
+Interfaces de monitoring
 HDFS NameNode : http://localhost:9870
 
 YARN ResourceManager : http://localhost:8088
 
-🔄 Workflow d'Utilisation
-Étape 1 : Ingestion Automatisée (Airflow)
-Un DAG Airflow exécute périodiquement un script de collecte qui récupère les données JSON de l'API TBM et les dépose dans HDFS.
+🔄 Workflow d’Utilisation
+Étape 1 : Ingestion automatisée (Airflow)
+Un DAG Apache Airflow exécute périodiquement un script Python qui :
 
-Action équivalente en ligne de commande :
+récupère les données JSON depuis l’API TBM,
 
-Bash
+stocke les fichiers dans HDFS.
 
-# Création du répertoire cible dans HDFS
+Équivalent en ligne de commande HDFS :
 
-hdfs dfs -mkdir -p /user/input
+bash
+Copier le code
+# Création du répertoire cible
+hdfs dfs -mkdir -p input
 
-# Injection manuelle d'un fichier
+# Injection du fichier dans HDFS
+hdfs dfs -put purchases.txt input/
+Étape 2 : Analyse interactive (Spark Shell)
+Les analyses sont réalisées via Spark Shell (Scala) pour un traitement rapide en mémoire.
 
-hdfs dfs -put data_tbm.json /user/input/
-Étape 2 : Analyse Interactive (Spark Shell)
-Le traitement se fait via le shell Spark (Scala) pour des calculs rapides en mémoire.
+Lancement de Spark depuis le conteneur hadoop-master :
 
-Lancement de Spark :
-
-Bash
-
+bash
+Copier le code
 spark-shell
-Exemple de traitement Scala :
+Exemple de traitement :
 
-Scala
+scala
+Copier le code
+// Chargement des données depuis HDFS
+val data = sc.textFile("input/data_tbm.json")
 
-// Chargement du fichier depuis HDFS
-val data = sc.textFile("/user/input/data_tbm.json")
+// Comptage du nombre d’entrées
+data.count()
 
-// Comptage des entrées
-println(s"Nombre total d'entrées : ${data.count()}")
-
-// Affichage des 5 premières lignes
+// Affichage des premières lignes
 data.take(5).foreach(println)
 👥 Auteurs et Contributeurs
-Axel GODART - Developer & DATA
+Axel GODART — Developer & Data
 
-Projet réalisé dans le cadre du cours "Traitement Batch avec Hadoop HDFS".
+Encadrement :
+Projet réalisé dans le cadre du cours « Traitement Batch avec Hadoop HDFS ».
 
 📄 Licence
 Ce projet est sous licence MIT.
+Consultez le fichier LICENSE pour plus de détails.
 
-Plaintext
+vbnet
+Copier le code
+MIT License
 
 Copyright (c) 2024 Axel GODART
 
@@ -117,4 +155,7 @@ of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions...
+furnished to do so, subject to the following conditions:
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+```
